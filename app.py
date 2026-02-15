@@ -62,6 +62,7 @@ page = st.sidebar.radio(
     [
         "📂 Upload Data",
         "📊 Data Overview",
+        "🧹 Outlier Treatment",   # ✅ ADDED
         "🔍 PCA Analysis",
         "📉 Clustering Analysis",
         "🌳 Hierarchical Clustering",
@@ -117,6 +118,66 @@ elif page == "📊 Data Overview":
         sns.histplot(df[feature], kde=True, ax=ax)
         st.pyplot(fig)
 
+elif page == "🧹 Outlier Treatment":
+
+    if st.session_state.data is None:
+        st.warning("Please upload dataset first.")
+    else:
+        df_original = st.session_state.data.copy()
+
+        if "Customer_ID" in df_original.columns:
+            df_original = df_original.drop("Customer_ID", axis=1)
+
+        numeric_cols = df_original.select_dtypes(include=np.number).columns.tolist()
+
+        # -------------------------
+        # BEFORE CLEANING
+        # -------------------------
+        st.subheader("📊 Before Cleaning - Numerical Features")
+
+        fig_before, ax_before = plt.subplots(figsize=(14,6))
+        sns.boxplot(data=df_original[numeric_cols], ax=ax_before)
+        ax_before.set_xticklabels(ax_before.get_xticklabels(), rotation=45)
+        st.pyplot(fig_before)
+
+        # -------------------------
+        # YOUR NOTEBOOK CLEANING LOGIC
+        # -------------------------
+
+        df_cleaned = df_original.copy()
+
+        if "Annual_Income_K" in df_cleaned.columns:
+            df_cleaned = df_cleaned[df_cleaned["Annual_Income_K"] > 0]
+
+        if "Total_Transactions" in df_cleaned.columns:
+            df_cleaned = df_cleaned[df_cleaned["Total_Transactions"] >= 0]
+
+        if "Return_Rate" in df_cleaned.columns:
+            df_cleaned = df_cleaned[df_cleaned["Return_Rate"] >= 0]
+
+        if "Discount_Sensitivity" in df_cleaned.columns:
+            df_cleaned = df_cleaned[df_cleaned["Discount_Sensitivity"].between(0,1)]
+
+        if "Email_Open_Rate" in df_cleaned.columns:
+            df_cleaned = df_cleaned[df_cleaned["Email_Open_Rate"].between(0,1)]
+
+        removed = df_original.shape[0] - df_cleaned.shape[0]
+        st.success(f"✅ Removed {removed} invalid rows")
+
+        # -------------------------
+        # AFTER CLEANING
+        # -------------------------
+        st.subheader("📊 After Cleaning - Numerical Features")
+
+        fig_after, ax_after = plt.subplots(figsize=(14,6))
+        sns.boxplot(data=df_cleaned[numeric_cols], ax=ax_after)
+        ax_after.set_xticklabels(ax_after.get_xticklabels(), rotation=45)
+        st.pyplot(fig_after)
+
+        st.session_state.cleaned_data = df_cleaned.copy()
+
+
+
 # ======================================
 # PCA ANALYSIS
 # ======================================
@@ -126,7 +187,12 @@ elif page == "🔍 PCA Analysis":
     if st.session_state.data is None:
         st.warning("Upload dataset first.")
     else:
-        df = st.session_state.data
+
+        if "cleaned_data" in st.session_state:
+            df = st.session_state.cleaned_data
+        else:
+            df = st.session_state.data
+
         numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
         X = df[numeric_cols]
@@ -154,7 +220,13 @@ elif page == "📉 Clustering Analysis":
     if st.session_state.data is None:
         st.warning("Upload dataset first.")
     else:
-        df = st.session_state.data
+
+        if "cleaned_data" in st.session_state:
+            df = st.session_state.cleaned_data.copy()
+        else:
+            df = st.session_state.data.copy()
+
+
         numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
         X = df[numeric_cols]
@@ -162,10 +234,6 @@ elif page == "📉 Clustering Analysis":
         X_scaled = scaler.fit_transform(X)
 
         st.success("Data Scaled Successfully")
-
-        # -----------------------------
-        # ELBOW METHOD
-        # -----------------------------
 
         st.subheader("📉 Elbow Method")
 
@@ -182,10 +250,6 @@ elif page == "📉 Clustering Analysis":
         ax_elbow.set_xlabel("Number of Clusters (k)")
         ax_elbow.set_ylabel("Inertia")
         st.pyplot(fig_elbow)
-
-        # -----------------------------
-        # FAST SILHOUETTE
-        # -----------------------------
 
         st.subheader("📊 Silhouette Score")
 
@@ -206,10 +270,6 @@ elif page == "📉 Clustering Analysis":
         ax_sil.set_xlabel("Number of Clusters (k)")
         ax_sil.set_ylabel("Silhouette Score")
         st.pyplot(fig_sil)
-
-        # -----------------------------
-        # FINAL MODEL (k = 2)
-        # -----------------------------
 
         k_selected = 2
         kmeans = KMeans(n_clusters=k_selected, random_state=42, n_init=10)
@@ -241,6 +301,7 @@ elif page == "📉 Clustering Analysis":
         st.pyplot(fig_cluster)
 
         st.session_state.clustered_data = df
+
 
 # ======================================
 # MARKETING INSIGHTS
