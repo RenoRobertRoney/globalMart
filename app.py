@@ -237,7 +237,7 @@ elif page == "📉 Clustering Analysis":
 
         st.subheader("📉 Elbow Method")
 
-        K_range = range(2, 11)
+        K_range = range(1, 11)
         inertia = []
 
         for k in K_range:
@@ -251,56 +251,62 @@ elif page == "📉 Clustering Analysis":
         ax_elbow.set_ylabel("Inertia")
         st.pyplot(fig_elbow)
 
+        # -----------------------------
+        # SILHOUETTE SCORE (k starts from 2)
+        # -----------------------------
         st.subheader("📊 Silhouette Score")
 
+        K_sil = range(2, 11)  # 👈 Start from 2
         sil_scores = []
 
         sample_size = min(2000, len(X_scaled))
         sample_indices = np.random.choice(len(X_scaled), sample_size, replace=False)
         X_sample = X_scaled[sample_indices]
 
-        for k in K_range:
+        for k in K_sil:
             km = KMeans(n_clusters=k, random_state=42, n_init=10)
             labels_full = km.fit_predict(X_scaled)
             labels_sample = labels_full[sample_indices]
             sil_scores.append(silhouette_score(X_sample, labels_sample))
 
         fig_sil, ax_sil = plt.subplots()
-        ax_sil.bar(K_range, sil_scores)
+        ax_sil.bar(K_sil, sil_scores)
         ax_sil.set_xlabel("Number of Clusters (k)")
         ax_sil.set_ylabel("Silhouette Score")
         st.pyplot(fig_sil)
-
+        # -----------------------------
+        # FINAL MODEL (k = 2)
+        # -----------------------------
         k_selected = 2
+
         kmeans = KMeans(n_clusters=k_selected, random_state=42, n_init=10)
         df["Cluster"] = kmeans.fit_predict(X_scaled)
 
-        labels = df["Cluster"].values
-        silhouette = silhouette_score(X_sample, labels[sample_indices])
-
-        col1, col2 = st.columns(2)
-        col1.metric("Selected Clusters", k_selected)
-        col2.metric("Silhouette Score", round(silhouette, 3))
-
+        # -----------------------------
         # PCA Visualization
+        # -----------------------------
         pca_2 = PCA(n_components=2)
         X_pca_2 = pca_2.fit_transform(X_scaled)
 
         st.subheader("🎯 Cluster Visualization (2D PCA)")
 
         fig_cluster, ax_cluster = plt.subplots(figsize=(8,6))
-        ax_cluster.scatter(
+        scatter = ax_cluster.scatter(
             X_pca_2[:,0],
             X_pca_2[:,1],
             c=df["Cluster"],
             cmap='viridis',
             alpha=0.7
         )
+
         ax_cluster.set_xlabel("Principal Component 1")
         ax_cluster.set_ylabel("Principal Component 2")
+        ax_cluster.set_title("Customer Segments (k = 2)")
+
         st.pyplot(fig_cluster)
 
         st.session_state.clustered_data = df
+
 
 
 # ======================================
